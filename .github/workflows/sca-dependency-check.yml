@@ -65,6 +65,8 @@ jobs:
           # Si no existe la clave exacta, restaura la caché más reciente del mismo SO.
           restore-keys: |
             nvd-${{ runner.os }}-
+          # Conserva la base actualizada aunque el análisis falle por vulnerabilidades.
+          save-always: true
 
       # Ejecuta Dependency-Check y genera HTML, XML, JSON y SARIF.
       - name: Ejecutar Dependency-Check
