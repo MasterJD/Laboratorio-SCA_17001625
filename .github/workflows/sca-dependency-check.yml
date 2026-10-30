@@ -1,0 +1,166 @@
+# Nombre del workflow que aparece en la pestaña Actions.
+name: SCA con OWASP Dependency-Check
+
+# Eventos que disparan el pipeline.
+on:
+  # Se ejecuta en cada push a main.
+  push:
+    # Solo para la rama main.
+    branches: [ main ]
+
+  # Se ejecuta en cada pull request que apunte a main.
+  pull_request:
+    # Solo para PRs hacia main.
+    branches: [ main ]
+
+  # Permite lanzarlo manualmente desde la pestaña Actions.
+  workflow_dispatch:
+
+# Permisos mínimos necesarios para leer el código y subir el SARIF.
+permissions:
+  # Solo lectura del contenido del repositorio.
+  contents: read
+  # Necesario para escribir alertas en Security > Code scanning.
+  security-events: write
+
+# Jobs del workflow.
+jobs:
+  # Job principal: análisis SCA con OWASP Dependency-Check.
+  dependency-check:
+    # Nombre visible del job.
+    name: OWASP Dependency-Check
+    # Máquina virtual efímera de GitHub con Ubuntu.
+    runs-on: ubuntu-latest
+
+    # Pasos del job.
+    steps:
+      # Descarga el código del repositorio en la máquina virtual.
+      - name: Checkout del repositorio
+        # Acción oficial para clonar el repositorio.
+        uses: actions/checkout@v4
+
+      # Instala un JDK 17 (Temurin) y configura Maven.
+      - name: Configurar Java 17
+        # Acción oficial de GitHub para instalar Java.
+        uses: actions/setup-java@v4
+        # Parámetros de la acción.
+        with:
+          # Distribución del JDK.
+          distribution: temurin
+          # Versión requerida por el laboratorio.
+          java-version: '17'
+          # Cachea las dependencias de Maven para acelerar el job.
+          cache: maven
+
+      # Restaura la base de datos del NVD de ejecuciones anteriores.
+      - name: Cache de la base de datos del NVD
+        # Acción oficial de caché.
+        uses: actions/cache@v4
+        # Parámetros de la caché.
+        with:
+          # Ruta donde dependency-check-maven guarda la base del NVD.
+          path: ~/.m2/repository/org/owasp/dependency-check-data
+          # Clave única por ejecución para guardar la base actualizada al final.
+          key: nvd-${{ runner.os }}-${{ github.run_id }}
+          # Si no existe la clave exacta, restaura la caché más reciente del mismo SO.
+          restore-keys: |
+            nvd-${{ runner.os }}-
+
+      # Ejecuta Dependency-Check y genera HTML, XML, JSON y SARIF.
+      - name: Ejecutar Dependency-Check
+        # La clave se inyecta como variable de entorno desde el secreto; no está escrita en el YAML.
+        env:
+          # Secreto configurado en Settings > Secrets and variables > Actions.
+          NVD_API_KEY: ${{ secrets.NVD_API_KEY }}
+        # Comando Maven que lanza el plugin.
+        # -B: modo batch, sin colores ni preguntas interactivas.
+        # -Dformat=ALL: genera HTML, XML, JSON, SARIF, CSV y JUnit.
+        # -DossindexAnalyzerEnabled=false: no depende de otra API externa.
+        # -Ddependency-check.failBuildOnCVSS=7: falla si hay CVSS >= 7.
+        run: |
+          mvn -B org.owasp:dependency-check-maven:13.0.0:check -Dformat=ALL -DossindexAnalyzerEnabled=false -Ddependency-check.failBuildOnCVSS=7
+
+      # Sube el SARIF a la pestaña Security > Code scanning.
+      - name: Subir SARIF a Code scanning
+        # Se ejecuta aunque el paso anterior falle por CVSS alto.
+        if: always() && hashFiles('target/dependency-check-report.sarif') != ''
+        # Acción oficial de CodeQL que acepta SARIF de cualquier herramienta.
+        uses: github/codeql-action/upload-sarif@v3
+        # Parámetros de la subida.
+        with:
+          # Archivo SARIF generado por Dependency-Check.
+          sarif_file: target/dependency-check-report.sarif
+          # Categoría que identifica las alertas de esta herramienta.
+          category: dependency-check
+
+      # Guarda los reportes HTML y XML como artefactos descargables.
+      - name: Publicar reportes como artefactos
+        # Se ejecuta aunque Dependency-Check falle por severidad.
+        if: always()
+        # Acción oficial para subir artefactos.
+        uses: actions/upload-artifact@v4
+        # Parámetros del artefacto.
+        with:
+          # Nombre del artefacto que se descarga desde la pestaña Actions.
+          name: dependency-check-reports
+          # Archivos que se incluyen en el artefacto.
+          path: |
+            target/dependency-check-report.html
+            target/dependency-check-report.xml
+            target/dependency-check-report.json
+            target/dependency-check-report.sarif
+          # No falla si por algún motivo no se generó ningún reporte.
+          if-no-files-found: warn
+
+  # Job extra (+5): genera el SBOM CycloneDX y lo publica como artefacto.
+  sbom:
+    # Nombre visible del job extra.
+    name: SBOM CycloneDX
+    # Máquina virtual efímera de GitHub con Ubuntu.
+    runs-on: ubuntu-latest
+
+    # Pasos del job de SBOM.
+    steps:
+      # Descarga el código del repositorio.
+      - name: Checkout del repositorio
+        # Acción oficial para clonar el repositorio.
+        uses: actions/checkout@v4
+
+      # Instala Java 17 para ejecutar Maven.
+      - name: Configurar Java 17
+        # Acción oficial de GitHub para instalar Java.
+        uses: actions/setup-java@v4
+        # Parámetros de la acción.
+        with:
+          # Distribución del JDK.
+          distribution: temurin
+          # Versión requerida por el laboratorio.
+          java-version: '17'
+          # Cachea las dependencias de Maven.
+          cache: maven
+
+      # Genera el SBOM CycloneDX en formato JSON.
+      - name: Generar SBOM
+        # Ejecuta directamente el goal del plugin CycloneDX.
+        # makeAggregateBom crea target/bom.json con todos los componentes.
+        run: |
+          mvn -B org.cyclonedx:cyclonedx-maven-plugin:2.9.3:makeAggregateBom
+
+      # Muestra en el log cuántos componentes contiene el SBOM.
+      - name: Contar componentes del SBOM
+        # jq ya viene instalado en los runners de Ubuntu.
+        run: |
+          echo "Componentes en el SBOM: $(jq '.components | length' target/bom.json)"
+
+      # Publica el SBOM como artefacto descargable.
+      - name: Publicar SBOM como artefacto
+        # Acción oficial para subir artefactos.
+        uses: actions/upload-artifact@v4
+        # Parámetros del artefacto.
+        with:
+          # Nombre del artefacto del SBOM.
+          name: cyclonedx-sbom
+          # Archivo JSON generado por CycloneDX.
+          path: target/bom.json
+          # No falla si el archivo no existe.
+          if-no-files-found: error

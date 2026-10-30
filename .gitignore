@@ -1,1 +1,55 @@
 Tarea_SCA_DependencyCheck.pdf
+
+# Build output
+target/
+*.war
+*.class
+
+# Local SCA reports
+reports/
+
+# Local secrets and environment files
+.env
+.env.*
+!.env.example
+*.secret
+*.secrets
+*-secret.*
+*-secrets.*
+secrets/
+credentials/
+!**/credentials.example*
+
+# Private keys and certificates
+*.pem
+*.key
+*.p12
+*.pfx
+*.jks
+*.keystore
+
+# Local tokens and exports
+token.json
+tokens.json
+credentials.json
+*_credentials.json
+*_token.json
+
+# NVD and local service data
+infra/nvd-feeds/
+infra/**/data/
+infra/**/postgres-data/
+infra/**/mysql-data/
+mysql-data/
+
+# Local evidence and temporary exports
+.tmp/
+tmp/
+*.tmp
+*.bak
+
+# IDE / OS
+.idea/
+*.iml
+.vscode/
+.DS_Store
