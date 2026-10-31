@@ -29,6 +29,7 @@ credentials/
 *.keystore
 
 # Local tokens and exports
+.dt.jwt
 token.json
 tokens.json
 credentials.json
@@ -41,6 +42,7 @@ infra/**/data/
 infra/**/postgres-data/
 infra/**/mysql-data/
 mysql-data/
+javavulnerablelab-sca/
 
 # Local evidence and temporary exports
 .tmp/
