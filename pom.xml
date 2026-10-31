@@ -14,25 +14,44 @@
       <version>3.8.1</version>
       <scope>test</scope>
     </dependency>
+    <!-- Connector/J 8.4.0: corrige CVE-2023-22102 (afecta a <= 8.1.0).
+         Mantiene el driver legacy com.mysql.jdbc.Driver que usa la app. -->
     <dependency>
-    	<groupId>mysql</groupId>
-    	<artifactId>mysql-connector-java</artifactId>
-    	<version>5.1.26</version>
+      <groupId>com.mysql</groupId>
+      <artifactId>mysql-connector-j</artifactId>
+      <version>8.4.0</version>
+    </dependency>
+    <!-- protobuf-java es transitiva de Connector/J; 3.25.5 corrige
+         CVE-2024-7254 (stack overflow al parsear grupos anidados). -->
+    <dependency>
+      <groupId>com.google.protobuf</groupId>
+      <artifactId>protobuf-java</artifactId>
+      <version>3.25.5</version>
     </dependency>
     <dependency>
 	    <groupId>org.json</groupId>
 	    <artifactId>json</artifactId>
-	    <version>20090211</version>
+	    <version>20231013</version>
 	</dependency>
 	<dependency>
 		<groupId>javax.servlet</groupId>
 		<artifactId>jstl</artifactId>
 		<version>1.2</version>
 	</dependency>
+	<!-- Hibernate 4.0.1 acumula CVEs sin parche en la rama 4.x; 5.6.15.Final
+	     mantiene las APIs usadas por orm.jsp (Configuration, Session, Query)
+	     y corrige CVE-2020-25638 y CVE-2019-14900. -->
 	<dependency>
 		<groupId>org.hibernate</groupId>
 		<artifactId>hibernate-core</artifactId>
-		<version>4.0.1.Final</version>
+		<version>5.6.15.Final</version>
+	</dependency>
+	<!-- hibernate-core 4.x arrastraba dom4j 1.6.1 (CVE-2020-10683, CVSS 9.8).
+	     Se fija 2.1.4 para que Maven resuelva esta versión corregida. -->
+	<dependency>
+		<groupId>org.dom4j</groupId>
+		<artifactId>dom4j</artifactId>
+		<version>2.1.4</version>
 	</dependency>
 	<dependency>
     <groupId>javax.servlet</groupId>
@@ -48,39 +67,43 @@
 		<artifactId>jaxb-api</artifactId>
 		<version>2.3.1</version>
 	</dependency>
-	<!-- OWASP 2025 A03 Software Supply Chain: log4j 2.12.1 is the Java 7 branch
-	     and is still vulnerable to Log4Shell (CVE-2021-44228). 2.12.2 fixed it. -->
+	<!-- OWASP 2025 A03 Software Supply Chain: se subió de log4j 2.12.1
+	     (rama Java 7, vulnerable a Log4Shell CVE-2021-44228) a 2.26.1,
+	     que corrige CVE-2021-44228, CVE-2021-45046, CVE-2021-45105,
+	     CVE-2021-44832 y los CVE-2026 reportados sobre 2.25.x. -->
 	<dependency>
 		<groupId>org.apache.logging.log4j</groupId>
 		<artifactId>log4j-api</artifactId>
-		<version>2.12.1</version>
+		<version>2.26.1</version>
 	</dependency>
 	<dependency>
 		<groupId>org.apache.logging.log4j</groupId>
 		<artifactId>log4j-core</artifactId>
-		<version>2.12.1</version>
+		<version>2.26.1</version>
 	</dependency>
 	<!-- OWASP 2025 A08 Software or Data Integrity Failures: commons-collections
 	     3.1 (2004) carries the InvokerTransformer gadget used by ysoserial's
-	     CommonsCollections chains. On the classpath it turns the raw
-	     ObjectInputStream in vulnerability/deserialize/preferences.jsp into RCE
-	     (CWE-502). Fixed by upgrading to 3.2.2 + a deserialization allow-list. -->
+	     CommonsCollections chains. En esta rama se actualiza a 3.2.2, que
+	     desactiva la deserialización de esos transformadores (CVE-2015-6420,
+	     CVE-2015-7501). -->
 	<dependency>
 		<groupId>commons-collections</groupId>
 		<artifactId>commons-collections</artifactId>
-		<version>3.1</version>
+		<version>3.2.2</version>
 	</dependency>
-	<!-- OWASP 2025 A06 Insecure Design: file upload with no type restriction
-	     (CWE-434). commons-fileupload 1.3.x + commons-io are Java 7 compatible. -->
+	<!-- OWASP 2025 A06 Insecure Design: file upload con validación de tipo
+	     (CWE-434). Se actualiza a commons-fileupload 1.6.0 y commons-io
+	     2.16.1, que corrigen CVE-2023-24998, CVE-2025-48976, CVE-2021-29425
+	     y CVE-2024-47554. -->
 	<dependency>
 		<groupId>commons-fileupload</groupId>
 		<artifactId>commons-fileupload</artifactId>
-		<version>1.3.3</version>
+		<version>1.6.0</version>
 	</dependency>
 	<dependency>
 		<groupId>commons-io</groupId>
 		<artifactId>commons-io</artifactId>
-		<version>2.6</version>
+		<version>2.16.1</version>
 	</dependency>
   </dependencies>
   <build>
